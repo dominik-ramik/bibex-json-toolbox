@@ -140,4 +140,37 @@ Markdown and HTML outputs will have citations and references formatted according
 
 ---
 
+## Supported Citation Tag Styles
+
+You can use the following styles of reference `@tags` in your text (see `main.test.js` for examples):
+
+- `@citekey`  
+  Narrative citation, e.g. `@smith2020` will be transformed to `Smith et al. (2020)`
+
+- `[@citekey]`  
+  Parenthetical citation, e.g. `[@smith2020]` will be transformed to `(Smith et al., 2020)`
+
+- `[@citekey; @otherkey]`  
+  Multiple parenthetical citations, e.g. `[@smith2020; @doe2021]` will be transformed to `(Smith et al., 2020; Doe, 2021)`
+
+- `@citekey[suffix]`  
+  Narrative citation with suffix, e.g. `@smith2020[p. 12]` will be transformed to `Smith et al. (2020, p. 12)`
+
+- `[@citekey; @otherkey[suffix]]`  
+  Multiple citations, each with optional suffix, e.g. `[@smith2020; @doe2021[p. 12]]` will be transformed to `(Smith et al., 2020; Doe, 2021, p. 12)`
+
+- `[prefix @citekey, suffix]`  
+  Parenthetical citation with prefix and suffix, e.g. `[e.g. @smith2020, p. 12]` will be transformed to `(e.g. Smith et al., 2020, p. 12)`
+
+- `[-@citekey]`  
+  Parenthetical, year only, e.g. `[-@smith2020]` will be transformed to `(2020)`
+
+- `[prefix -@citekey, suffix]`  
+  Parenthetical, year only, with prefix/suffix, e.g. `[e.g. -@smith2020, p. 12]` will be transformed to `(e.g. 2020, p. 12)`
+
+- `@citekey [suffix]`  
+  Narrative citation with suffix in brackets, e.g. `@smith2020 [p. 12]` will be transformed to `Smith et al. (2020, p. 12)`
+
+---
+
 Author: Dominik M. Ramík
