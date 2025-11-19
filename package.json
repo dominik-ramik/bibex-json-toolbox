@@ -3,6 +3,10 @@
   "version": "1.2.0",
   "private": false,
   "type": "module",
+  "main": "src/main.js",
+  "exports": {
+    ".": "./src/main.js"
+  },
   "scripts": {
     "build": "vite build",
     "lint": "eslint . --fix",
@@ -16,5 +20,20 @@
   },
   "devDependencies": {
     "@vitest/ui": "^4.0.10"
-  }
+  },
+  "description": "A JavaScript toolbox for parsing BibTeX and formatting citations/bibliographies (APA, Harvard, etc.) in text, Markdown, or HTML.",
+  "keywords": [
+    "bibtex",
+    "citation",
+    "bibliography",
+    "apa",
+    "harvard",
+    "markdown",
+    "html",
+    "parser",
+    "formatter",
+    "references",
+    "javascript",
+    "library"
+  ]
 }

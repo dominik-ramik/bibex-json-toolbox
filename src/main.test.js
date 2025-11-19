@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { TinyBibReader, TinyBibFormatter, Entry } from './TinyBibMD.js'
+import { TinyBibReader, TinyBibFormatter } from './main.js'
 
 const bib2citeAPA = [
   {
@@ -2335,8 +2335,9 @@ test('text transformation', () => {
   abc Cockett et al. (2015, pg. 26) abc`
 
   const expectedTransformedTextMD = `
-  Cockett et al. (2015)
+  Cockett *et al.* (2015)
   Parenthetical
+  (Cockett *et al.*, 2015)
   abc (Cockett *et al.*, 2015) abc
   abc (2015) abc
   abc (Cockett *et al.*, 2015; 2016) abc
@@ -2354,8 +2355,9 @@ test('text transformation', () => {
   abc Cockett *et al.* (2015, pg. 26) abc`
 
   const expectedTransformedTextHTML = `
-  Cockett et al. (2015)
+  Cockett <i>et al.</i> (2015)
   Parenthetical
+  (Cockett <i>et al.</i>, 2015)
   abc (Cockett <i>et al.</i>, 2015) abc
   abc (2015) abc
   abc (Cockett <i>et al.</i>, 2015; 2016) abc
@@ -2373,7 +2375,9 @@ test('text transformation', () => {
   abc Cockett <i>et al.</i> (2015, pg. 26) abc`
 
   const expectedTransformedTextHTMLwithCallback = `
+  <a href='#cite-cockett2015'>Cockett <i>et al.</i> (2015)</a>
   Parenthetical
+  (<a href='#cite-cockett2015'>Cockett <i>et al.</i>, 2015</a>)
   abc (<a href='#cite-cockett2015'>Cockett <i>et al.</i>, 2015</a>) abc
   abc (<a href='#cite-cockett2015'>2015</a>) abc
   abc (<a href='#cite-cockett2015'>Cockett <i>et al.</i>, 2015</a>; <a href='#cite-cockett2016'>2016</a>) abc
