@@ -1,0 +1,20 @@
+{
+  "name": "bibex-json-toolbox",
+  "version": "1.2.0",
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "lint": "eslint . --fix",
+    "format": "prettier --write src/",
+    "test": "vitest --ui"
+  },
+  "dependencies": {
+    "bibtex-js-parser": "^1.1.6",
+    "vite": "^7.2.2",
+    "vitest": "^4.0.10"
+  },
+  "devDependencies": {
+    "@vitest/ui": "^4.0.10"
+  }
+}
