@@ -14,7 +14,7 @@ The library is suitable for integrating citation and bibliography features into 
 You can install this package from npm:
 
 ```sh
-npm install bibex-json-toolbox
+npm install bibtex-json-toolbox
 ```
 
 ---
@@ -25,7 +25,7 @@ npm install bibex-json-toolbox
 
 ```js
 // Import the classes from the npm package
-import { TinyBibReader, TinyBibFormatter } from 'bibex-json-toolbox';
+import { TinyBibReader, TinyBibFormatter } from 'bibtex-json-toolbox';
 
 // Example BibTeX string
 const bibtex = `
@@ -83,7 +83,7 @@ console.log(ref2);
 Suppose you have a text  want to insert citations and generate a bibliography in different formats.
 
 ```js
-import { TinyBibReader, TinyBibFormatter } from 'bibex-json-toolbox';
+import { TinyBibReader, TinyBibFormatter } from 'bibtex-json-toolbox';
 
 // Example a text with citation codes
 const scholarlyText = `

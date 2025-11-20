@@ -628,7 +628,7 @@ export class TinyBibFormatter {
     }
 
     /*
-    Original regex: /(\[[^\]]*\-?@[^ \[\],{}~#%\\]+[^\]]*\])|(@[^ \[\],{}~#%\\]+[ ]?\[[^\]]+\])|(@[^ \[\],{}~#%\\]+)/gm
+    Original regex: /(\[[^\]]*\-?@[^ \[\],{}~#%\\]+[^\]]*\])|(@[^ \[\],{}~#%\\]+[ ]?\[[^\]]+\])|(@[^ \[\],{}~#%\\\r\n]+)"
     It has three parts:
       (\[[^\]]*\-?@[^ \[\],{}~#%\\]+[^\]]*\]) ... matches citekeys enclosed in square braces; [e.g. @cockett2015, pg. 22; cf. @cockett2016, chap. 6]
       (@[^ \[\],{}~#%\\]+[ ]?\[[^\]]+\]) ... matches citekeys without braces but followed immediately or with a space by a square-braces-enclosed suffix; @cockett2015 [pg. 26]

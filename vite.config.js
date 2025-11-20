@@ -13,8 +13,8 @@ export default defineConfig({
     },
     lib: {
       entry: 'src/main.js',
-      name: 'bibexJsonToolbox',
-      fileName: (format) => `bibex-json-toolbox.${format}.js`
+      name: 'bibtexJsonToolbox',
+      fileName: (format) => `bibtex-json-toolbox.${format}.js`
     }
   }
 });
