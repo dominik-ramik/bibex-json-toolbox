@@ -426,6 +426,11 @@ export class TinyBibFormatter {
 
   italicize(text) {
     text = text?.trim();
+
+    if (!text || text.length == 0) {
+      return "";
+    }
+
     switch (this.options.format) {
       case "text":
         return text;
@@ -440,6 +445,11 @@ export class TinyBibFormatter {
 
   urlize(url, text) {
     text = text?.trim();
+
+    if (!text || text.length == 0) {
+      return "";
+    }
+
     switch (this.options.format) {
       case "text":
         return text;
@@ -744,10 +754,14 @@ export class TinyBibFormatter {
   getFullReferenceApa(citeKey) {
     const entry = this.getEntry(citeKey);
 
+    console.log("DEBUG ENTRY ###", citeKey, entry);
+
     const author = this.getAuthorsInReference(citeKey, "author");
     const editor = this.getAuthorsInReference(citeKey, "editor");
 
     let ref = "";
+
+    let isStandalone = ["book", "booklet", "manual", "proceedings", "techreport"].includes(entry.type)
 
     ref += this.conditionalRender(author, "", "");
     if (!author) {
@@ -759,7 +773,7 @@ export class TinyBibFormatter {
       ref += this.conditionalRender(entry.series, " ", ".");
     }
 
-    ref += this.conditionalRender(entry.title, " ", "");
+    ref += this.conditionalRender(isStandalone ? this.italicize(entry.title) : entry.title, " ", "");
 
     if (entry.type == "book" || entry.type == "incollection") {
       if (entry.author) {
@@ -781,17 +795,13 @@ export class TinyBibFormatter {
       ref += this.conditionalRender(entry.publisher, ". ", "");
     }
 
-    if (entry.doi) {
+    if (entry.doi &&
+      entry.doi.length > 0) {
       let doiUrl = entry.doi;
 
-      if (
-        entry.doi &&
-        entry.doi.length > 0 &&
-        !doiUrl.toLowerCase().startsWith("http")
-      ) {
+      if (!doiUrl.startsWith("http://") && !doiUrl.startsWith("https://")) {
         doiUrl = "https://doi.org/" + entry.doi;
       }
-
       ref += this.conditionalRender(this.urlize(doiUrl, entry.doi), ". ", "");
     } else {
       ref += ".";
@@ -801,7 +811,7 @@ export class TinyBibFormatter {
       console.log("DEBUG ###", citeKey, ref);
     }
 
-    return ref;
+    return ref
   }
 
   conditionalRender(text, prefix, suffix) {

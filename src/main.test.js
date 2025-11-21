@@ -2039,7 +2039,10 @@ test('namesExtraction', () => {
   expect(names[1].jrs).toEqual(['III'])
 })
 
-const bibtex = `@article{einstein,
+const bibtex = `
+@misc{dmr, author = "Ramík, Dominik M.", title = "Personal observations and unpublished field data", year = "s.n." }
+
+@article{einstein,
   author = {Albert Einstein},
   title = "The true about {T}ree",
   journaltitle = {Annalen der {P}hysik},
@@ -2223,7 +2226,7 @@ test('italicize text', () => {
 })
 
 test('citeKeys extraction', () => {
-  expect(bibtexJson.citeKeys).toEqual(['einstein', 'cockett2016', 'cockett2015', 'doe2012pc', 'nar4673', 'heagy2017', 'texbook', 'latexcompanion', 'latex2e', 'knuth1984', 'lesk1977', 'realscience', 'article1', 'book', 'book2', 'booknoauthornoreditor', 'website'])
+  expect(bibtexJson.citeKeys).toEqual(['dmr', 'einstein', 'cockett2016', 'cockett2015', 'doe2012pc', 'nar4673', 'heagy2017', 'texbook', 'latexcompanion', 'latex2e', 'knuth1984', 'lesk1977', 'realscience', 'article1', 'book', 'book2', 'booknoauthornoreditor', 'website'])
 })
 
 let einstein = bibtexJson.bibliography['einstein']
@@ -2302,6 +2305,8 @@ test('in-text narrative with suffix', () => {
 
 test('text transformation', () => {
   const text = `
+  @dmr
+
   @cockett2015
   Parenthetical
   [@cockett2015]
@@ -2322,6 +2327,8 @@ test('text transformation', () => {
   abc @cockett2015 [pg. 26] abc`
 
   const expectedTransformedText = `
+  Ramík (s.n.)
+
   Cockett et al. (2015)
   Parenthetical
   (Cockett et al., 2015)
@@ -2342,6 +2349,8 @@ test('text transformation', () => {
   abc Cockett et al. (2015, pg. 26) abc`
 
   const expectedTransformedTextMD = `
+  Ramík (s.n.)
+
   Cockett *et al.* (2015)
   Parenthetical
   (Cockett *et al.*, 2015)
@@ -2362,6 +2371,8 @@ test('text transformation', () => {
   abc Cockett *et al.* (2015, pg. 26) abc`
 
   const expectedTransformedTextHTML = `
+  Ramík (s.n.)
+
   Cockett <i>et al.</i> (2015)
   Parenthetical
   (Cockett <i>et al.</i>, 2015)
@@ -2382,6 +2393,8 @@ test('text transformation', () => {
   abc Cockett <i>et al.</i> (2015, pg. 26) abc`
 
   const expectedTransformedTextHTMLwithCallback = `
+  <a href='#cite-dmr'>Ramík (s.n.)</a>
+
   <a href='#cite-cockett2015'>Cockett <i>et al.</i> (2015)</a>
   Parenthetical
   (<a href='#cite-cockett2015'>Cockett <i>et al.</i>, 2015</a>)
@@ -2431,7 +2444,7 @@ test('APA inReferenceAuthors', () => {
   expect(renderApa.getAuthorsInReference('Grady2019-dn')).toBe('Grady, J. S., Her, M., Moreno, G., Perez, C., & Yelinek, J.')
 })
 
-test('APA references', () => {
+test('APA text references', () => {
   for (const item of bib2citeAPA) {
     const reader = new TinyBibReader(item.bib)
     const renderApa = new TinyBibFormatter(reader.bibliography, { style: 'apa', format: "text" })
@@ -2455,6 +2468,23 @@ test('APA references', () => {
     //expect(renderHarvard.getAuthorsInReference(citeKey)).toBe(item.harvard)
   }
 })
+
+test('APA markdown single', () => {
+  const reader = new TinyBibReader(`@book{Lavery2023,
+  title     = "Mammals of the South-west Pacific",
+  author    = " Lavery, Tyrone H. and Flannery, Tim F.",
+  publisher = "CSIRO Publishing",
+  year      =  2023
+}`)
+  const renderApa = new TinyBibFormatter(reader.bibliography, { style: 'apa', format: "markdown" })
+  const citeKey = reader.citeKeys[0]
+
+  let result = renderApa.getFullReference(citeKey)
+  
+  expect(result).toBe("Lavery, T. H., & Flannery, T. F. (2023). *Mammals of the South-west Pacific*. CSIRO Publishing.")
+  //expect(renderHarvard.getAuthorsInReference(citeKey)).toBe(item.harvard)
+}
+)
 
 let extendedBibTeXExamples = `
 @string{anch-ie = {Angew.~Chem. Int.~Ed.}}
