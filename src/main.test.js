@@ -7,6 +7,13 @@ const bib2citeAPA = [
     apa: 'Ramík, D. M. (s.n.). Personal observations and unpublished field data.'
   },
   {
+    bib: `@misc{dmr,
+       author = "Ramík, Dominik M.",
+       title = "Personal observations and unpublished field data",
+       year = "s.n." }`,
+    apa: 'Ramík, D. M. (s.n.). Personal observations and unpublished field data.'
+  },
+  {
     bib: '@book{Zug2013, title = "Reptiles and amphibians of the Pacific islands", author = "Zug, George R", publisher = "University of California Press", month = jul, year = 2013, address = "Berkeley, CA"}',
     apa: 'Zug, G. R. (2013). Reptiles and amphibians of the Pacific islands. University of California Press.'
   },

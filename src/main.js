@@ -7,17 +7,17 @@ export class TinyBibReader {
 
     const months = {
       jan: "January",
-      feb: "",
-      mar: "",
-      apr: "",
-      may: "",
-      jun: "",
-      jul: "",
-      aug: "",
-      sep: "",
-      oct: "",
-      nov: "",
-      dec: "",
+      feb: "February",
+      mar: "March",
+      apr: "April",
+      may: "May",
+      jun: "June",
+      jul: "July",
+      aug: "August",
+      sep: "September",
+      oct: "October",
+      nov: "November",
+      dec: "December",
     };
 
     //hotfix for month = jan without quotes, this is supposed to be a macro but not supported by BibtexParser
@@ -126,10 +126,10 @@ export class TinyBibReader {
       if (unexpectedCharacters.length > 0) {
         issues.push(
           "Unexpected characters in citekey '" +
-            citekey.substr(0, citekey.length - 1) +
-            "' (" +
-            unexpectedCharacters.join("") +
-            ")"
+          citekey.substr(0, citekey.length - 1) +
+          "' (" +
+          unexpectedCharacters.join("") +
+          ")"
         );
       }
     });
@@ -270,10 +270,10 @@ export class TinyBibReader {
       const von =
         vonStartInclusive >= 0
           ? getSubStringAsArray(
-              authorTokens,
-              vonStartInclusive,
-              vonEndExclusive
-            )
+            authorTokens,
+            vonStartInclusive,
+            vonEndExclusive
+          )
           : [];
       const firstName = getSubStringAsArray(
         authorTokens,
@@ -783,7 +783,7 @@ export class TinyBibFormatter {
 
     if (entry.doi) {
       let doiUrl = entry.doi;
-      
+
       if (
         entry.doi &&
         entry.doi.length > 0 &&
@@ -795,6 +795,10 @@ export class TinyBibFormatter {
       ref += this.conditionalRender(this.urlize(doiUrl, entry.doi), ". ", "");
     } else {
       ref += ".";
+    }
+
+    if (ref.includes("undefined")) {
+      console.log("DEBUG ###", citeKey, ref);
     }
 
     return ref;
