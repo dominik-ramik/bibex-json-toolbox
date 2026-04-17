@@ -498,7 +498,7 @@ export class TinyBibFormatter {
   }
 
   parseCodeSegment(codeSegment) {
-    const CITEKEY_TERMINATING_CHARACTERS = " [], {}~# %\\";
+    const CITEKEY_TERMINATING_CHARACTERS = " [], {}~# %\\.";
 
     // this is called only by codeToCitation which prepares citation codeSegment in a way that it only contains one citekey
     let parsed = {
@@ -640,12 +640,16 @@ export class TinyBibFormatter {
     /*
     Original regex: /(\[[^\]]*\-?@[^ \[\],{}~#%\\]+[^\]]*\])|(@[^ \[\],{}~#%\\]+[ ]?\[[^\]]+\])|(@[^ \[\],{}~#%\\\r\n]+)"
     It has three parts:
-      (\[[^\]]*\-?@[^ \[\],{}~#%\\]+[^\]]*\]) ... matches citekeys enclosed in square braces; [e.g. @cockett2015, pg. 22; cf. @cockett2016, chap. 6]
-      (@[^ \[\],{}~#%\\]+[ ]?\[[^\]]+\]) ... matches citekeys without braces but followed immediately or with a space by a square-braces-enclosed suffix; @cockett2015 [pg. 26]
-      (@[^ \[\],{}~#%\\\r\n]+) ... matches simply citekeys without any square braces; @cockett2015
+      (\[[^\]]*\-?@[-a-zA-Z0-9]+[^\]]*\]) ... matches citekeys enclosed in square braces; [e.g. @cockett2015, pg. 22; cf. @cockett2016, chap. 6]
+      (@[-a-zA-Z0-9]+[ ]?\[[^\]]+\]) ... matches citekeys without braces but followed immediately or with a space by a square-braces-enclosed suffix; @cockett2015 [pg. 26]
+      (@[-a-zA-Z0-9]+) ... matches simply citekeys without any square braces; @cockett2015
+
+    The citekey parts use [-a-zA-Z0-9]+ (the only characters allowed in citekeys per the validator)
+    instead of a broad exclusion list. This prevents trailing punctuation (.,:;!?) and
+    newline characters from being consumed as part of a citekey match.
     */
     const regex = new RegExp(
-      "(\\[[^\\]]*\\-?@[^ \\[\\],{}~#%\\\\]+[^\\]]*\\])|(@[^ \\[\\],{}~#%\\\\]+[ ]?\\[[^\\]]+\\])|(@[^ \\[\\],{}~#%\\\\\\r\\n]+)",
+      "(\\[[^\\]]*\\-?@[-a-zA-Z0-9]+[^\\]]*\\])|(@[-a-zA-Z0-9]+[ ]?\\[[^\\]]+\\])|(@[-a-zA-Z0-9]+)",
       "gm"
     );
 
@@ -754,8 +758,6 @@ export class TinyBibFormatter {
   getFullReferenceApa(citeKey) {
     const entry = this.getEntry(citeKey);
 
-    console.log("DEBUG ENTRY ###", citeKey, entry);
-
     const author = this.getAuthorsInReference(citeKey, "author");
     const editor = this.getAuthorsInReference(citeKey, "editor");
 
@@ -805,10 +807,6 @@ export class TinyBibFormatter {
       ref += this.conditionalRender(this.urlize(doiUrl, entry.doi), ". ", "");
     } else {
       ref += ".";
-    }
-
-    if (ref.includes("undefined")) {
-      console.log("DEBUG ###", citeKey, ref);
     }
 
     return ref

@@ -2437,6 +2437,21 @@ test('text transformation', () => {
   expect(transformedText).toEqual(expectedTransformedTextHTMLwithCallback)
 })
 
+test('transform edge cases: punctuation and multiline citekey', () => {
+  const reader = new TinyBibReader('@misc{dmr, author = "Ramík, Dominik M.", title = "Personal observations and unpublished field data", year = "s.n." }')
+  const format = new TinyBibFormatter(reader.bibliography, { style: 'apa', format: "text" })
+
+  // citekey at end of sentence followed by a period — period must remain
+  const input1 = 'This is a sentence @dmr.'
+  const out1 = format.transformInTextCitations(input1)
+  expect(out1).toBe('This is a sentence Ramík (s.n.).')
+
+  // citekey is first on a new line in a multiline string — replacement should occur and preserve newlines
+  const input2 = 'First line\n@dmr\nLast line'
+  const out2 = format.transformInTextCitations(input2)
+  expect(out2).toBe('First line\nRamík (s.n.)\nLast line')
+})
+
 test('APA inReferenceAuthors', () => {
   const reader = new TinyBibReader('@ARTICLE{Grady2019-dn, title = "Emotions in storybooks: A comparison of storybooks that represent ethnic and racial groups in the United States", author = "Grady, Jessica Stoltzfus and Her, Malina and Moreno, Geena and Perez, Catherine and Yelinek, Jillian", journal = "Psychol. Pop. Media Cult.", publisher = "American Psychological Association (APA)", volume = 8, number = 3, pages = "207--217", month = jul, year = 2019, language = "en" }')
   const renderApa = new TinyBibFormatter(reader.bibliography, { style: 'apa', format: "text" })
