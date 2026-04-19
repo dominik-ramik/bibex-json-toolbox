@@ -649,7 +649,7 @@ export class TinyBibFormatter {
     newline characters from being consumed as part of a citekey match.
     */
     const regex = new RegExp(
-      "(\\[[^\\]]*\\-?@[-a-zA-Z0-9]+[^\\]]*\\])|(@[-a-zA-Z0-9]+[ ]?\\[[^\\]]+\\])|(@[-a-zA-Z0-9]+)",
+      "(\\[[^\\]]*\\-?@[-a-zA-Z0-9]+[^\\]]*\\])|((?<!\\w)@[-a-zA-Z0-9]+[ ]?\\[[^\\]]+\\])|((?<!\\w)@[-a-zA-Z0-9]+)",
       "gm"
     );
 

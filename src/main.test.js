@@ -2452,6 +2452,15 @@ test('transform edge cases: punctuation and multiline citekey', () => {
   expect(out2).toBe('First line\nRamík (s.n.)\nLast line')
 })
 
+test('transform edge cases: do not fire on email', () => {
+  // Should not fire when @ is preceded by any text that could be email username last character. test on: "to be a continuously updated resource. Suggestions for additions or corrections are welcome and may be sent to Greg Plunkett (gplunkett@nybg.org). Comments or suggestions regarding the app may be sent to Dominik M. Ramík (dominik.ramik@seznam.cz). Vanuatu's Plant List"
+  const reader = new TinyBibReader('@misc{dmr, author = "Ramík, Dominik M.", title = "Personal observations and unpublished field data", year = "s.n." }')
+  const format = new TinyBibFormatter(reader.bibliography, { style: 'apa', format: "text" })
+
+  const input = "to be a continuously updated resource. Suggestions for additions or corrections are welcome and may be sent to Greg Plunkett (gplunkett@nybg.org). Comments or suggestions regarding the app may be sent to Dominik M. Ramík (dominik.ramik@seznam.cz). Vanuatu's Plant List"
+  expect(format.transformInTextCitations(input)).toBe(input)
+})
+
 test('APA inReferenceAuthors', () => {
   const reader = new TinyBibReader('@ARTICLE{Grady2019-dn, title = "Emotions in storybooks: A comparison of storybooks that represent ethnic and racial groups in the United States", author = "Grady, Jessica Stoltzfus and Her, Malina and Moreno, Geena and Perez, Catherine and Yelinek, Jillian", journal = "Psychol. Pop. Media Cult.", publisher = "American Psychological Association (APA)", volume = 8, number = 3, pages = "207--217", month = jul, year = 2019, language = "en" }')
   const renderApa = new TinyBibFormatter(reader.bibliography, { style: 'apa', format: "text" })
