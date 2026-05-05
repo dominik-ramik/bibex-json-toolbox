@@ -2452,6 +2452,31 @@ test('transform edge cases: punctuation and multiline citekey', () => {
   expect(out2).toBe('First line\nRamík (s.n.)\nLast line')
 })
 
+test('transform edge cases: month as text', () => {
+  const reader = new TinyBibReader(`@article{Marwan2025,
+  title = {Common birds breeding habits (placeholder publication)},
+  volume = {89},
+  number = {1},
+  journal = {The European Zoological Journal},
+  publisher = {Ornito UK Limited},
+  author = {Marwan, J. and Kamiona, K.},
+  year = {2025},
+  month = Dec,
+  pages = {1–14}
+}`)
+  const format = new TinyBibFormatter(reader.bibliography, { style: 'apa', format: "text" })
+
+  // citekey at end of sentence followed by a period — period must remain
+  const input1 = 'This is a sentence @Marwan2025.'
+  const out1 = format.transformInTextCitations(input1)
+  expect(out1).toBe('This is a sentence Marwan & Kamiona (2025).')
+
+  // citekey is first on a new line in a multiline string — replacement should occur and preserve newlines
+  const input2 = 'First line\n@Marwan2025\nLast line'
+  const out2 = format.transformInTextCitations(input2)
+  expect(out2).toBe('First line\nMarwan & Kamiona (2025)\nLast line')
+})
+
 test('transform edge cases: do not fire on email', () => {
   // Should not fire when @ is preceded by any text that could be email username last character. test on: "to be a continuously updated resource. Suggestions for additions or corrections are welcome and may be sent to Greg Plunkett (gplunkett@nybg.org). Comments or suggestions regarding the app may be sent to Dominik M. Ramík (dominik.ramik@seznam.cz). Vanuatu's Plant List"
   const reader = new TinyBibReader('@misc{dmr, author = "Ramík, Dominik M.", title = "Personal observations and unpublished field data", year = "s.n." }')
@@ -4173,3 +4198,44 @@ let extendedBibTeXExamples = `
                   localization key},
 }
                   `
+
+test('extendedBibTeXExamples read-in fails for non-standard entry types and citekeys', () => {
+  expect(() => new TinyBibReader(extendedBibTeXExamples)).toThrow(/Issues with citekeys/)
+})
+
+/*
+test('extendedBibTeXExamples supported entries can be read-in and compiled', () => {
+  const allowedEntryTypes = [
+    'article', 'book', 'booklet', 'conference', 'inbook', 'incollection',
+    'inproceedings', 'manual', 'mastersthesis', 'misc', 'phdthesis',
+    'proceedings', 'techreport', 'unpublished'
+  ]
+
+  // Extract @string macro definitions for substitution
+  const macros = {}
+  for (const m of extendedBibTeXExamples.matchAll(/@string\{(\S+)\s*=\s*\{([^}]+)\}/g)) {
+    macros[m[1]] = m[2]
+  }
+
+  // Split on entry boundaries, keep only supported types with valid citekeys
+  const entries = ('\n' + extendedBibTeXExamples)
+    .split(/\n(?=@)/)
+    .filter(entry => {
+      const m = entry.match(/^@([a-zA-Z]+)\{([a-zA-Z0-9-]+),/)
+      return m && allowedEntryTypes.includes(m[1].toLowerCase())
+    })
+    .map(entry => {
+      // Substitute unquoted @string macro references with their literal values
+      let result = entry
+      for (const [key, val] of Object.entries(macros)) {
+        result = result.replace(new RegExp(`(=\\s*)${key}(\\s*,)`, 'g'), `$1{${val}}$2`)
+      }
+      return result
+    })
+
+  expect(entries.length).toBeGreaterThan(0)
+  const reader = new TinyBibReader(entries.join('\n'))
+  expect(reader.citeKeys.length).toEqual(entries.length)
+  const formatter = new TinyBibFormatter(reader.bibliography, { style: 'apa', format: 'text' })
+  expect(formatter).toBeDefined()
+})*/

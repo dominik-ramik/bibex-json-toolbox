@@ -24,10 +24,10 @@ export class TinyBibReader {
     bibtex = bibtex.replace(
       new RegExp(
         "month[^\\S\r\n]*=[^\\S\r\n]*(" + Object.keys(months).join("|") + ")",
-        "gm"
+        "gmi"
       ),
       (match, g1) => {
-        return 'month="' + months[g1] + '"';
+        return 'month="' + months[g1.toLowerCase()] + '"';
       }
     );
 
@@ -415,8 +415,6 @@ export class TinyBibFormatter {
   getEntry(citeKey) {
     const lowerCiteKey = citeKey.toLowerCase();
 
-    //console.log(this.json);
-
     if (lowerCiteKey in this.json) {
       return this.json[lowerCiteKey];
     } else {
@@ -548,9 +546,11 @@ export class TinyBibFormatter {
     const prefixedAuthors =
       (prefix.length > 0 ? prefix + " " : "") +
       (yearOnly ? "" : this.authorsInText(citeKey));
+    const entryYear = this.getEntry(citeKey).year;
     const yearSuffixed =
-      this.getEntry(citeKey).year +
-      (suffix.length > 0 ? (suffix.startsWith(", ") ? "" : ", ") + suffix : "");
+      entryYear !== undefined
+        ? entryYear + (suffix.length > 0 ? (suffix.startsWith(", ") ? "" : ", ") + suffix : "")
+        : undefined;
 
     switch (style) {
       case "n":
@@ -679,9 +679,11 @@ export class TinyBibFormatter {
     let firstNameSpacer = "";
     switch (this.options.style) {
       case "apa":
+        // APA: space between initials — Smith, J. K.
         firstNameSpacer = " ";
         break;
       case "harvard":
+        // Harvard: no space between initials — Smith, J.K.
         firstNameSpacer = "";
         break;
       default:
@@ -727,8 +729,7 @@ export class TinyBibFormatter {
         (vons && vons.length > 0 ? vons + " " : "") +
         (last ? last + (first.length > 0 || jrs.length > 0 ? "," : "") : "") +
         (jrs && jrs.length > 0 ? " " + jrs : "") +
-        " " +
-        first
+        (first.length > 0 ? " " + first : "")
       );
     });
 
@@ -743,17 +744,36 @@ export class TinyBibFormatter {
       }
     }
 
-    return inReferenceAuthors + (kindOfAuthor == "editor" ? " (Eds.)" : "");
+    if (kindOfAuthor !== "editor") {
+      return inReferenceAuthors;
+    }
+
+    // Editor role label — APA uses title-case with parentheses; Harvard uses
+    // lower-case without outer parentheses (the label sits inside the "In:" block).
+    switch (this.options.style) {
+      case "apa":
+        return inReferenceAuthors + (authorToRender.length === 1 ? " (Ed.)" : " (Eds.)");
+      case "harvard":
+        return inReferenceAuthors + (authorToRender.length === 1 ? " (ed.)" : " (eds)");
+      default:
+        return inReferenceAuthors;
+    }
   }
 
   getFullReference(citeKey) {
     switch (this.options.style) {
       case "apa":
         return this.getFullReferenceApa(citeKey);
+      case "harvard":
+        return this.getFullReferenceHarvard(citeKey);
       default:
         throw "Unknown citation style: " + this.options.style;
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // APA full reference
+  // ---------------------------------------------------------------------------
 
   getFullReferenceApa(citeKey) {
     const entry = this.getEntry(citeKey);
@@ -763,7 +783,7 @@ export class TinyBibFormatter {
 
     let ref = "";
 
-    let isStandalone = ["book", "booklet", "manual", "proceedings", "techreport"].includes(entry.type)
+    const isStandalone = ["book", "booklet", "manual", "proceedings", "techreport"].includes(entry.type);
 
     ref += this.conditionalRender(author, "", "");
     if (!author) {
@@ -775,10 +795,14 @@ export class TinyBibFormatter {
       ref += this.conditionalRender(entry.series, " ", ".");
     }
 
-    ref += this.conditionalRender(isStandalone ? this.italicize(entry.title) : entry.title, " ", "");
+    const titleText = isStandalone ? this.italicize(entry.title) : entry.title;
+    const titleSuffix = isStandalone ? "" : ".";
+    ref += this.conditionalRender(titleText, " ", titleSuffix);
 
     if (entry.type == "book" || entry.type == "incollection") {
       if (entry.author) {
+        // Dedup period before ". Editor" block
+        if (ref.trimEnd().endsWith(".")) ref = ref.trimEnd().slice(0, -1);
         ref += this.conditionalRender(
           this.getAuthorsInReference(citeKey, "editor"),
           ". ",
@@ -788,7 +812,11 @@ export class TinyBibFormatter {
       ref += this.conditionalRender(this.italicize(entry.booktitle), ", ", "");
     }
 
-    ref += this.conditionalRender(this.italicize(entry.journal), ". ", "");
+    if (entry.journal) {
+      // Dedup period before ". Journal" block
+      if (ref.trimEnd().endsWith(".")) ref = ref.trimEnd().slice(0, -1);
+      ref += this.conditionalRender(this.italicize(entry.journal), ". ", "");
+    }
     ref += this.conditionalRender(entry.volume, ", ", "");
     ref += this.conditionalRender(entry.number, "(", ")");
     ref += this.conditionalRender(entry.pages?.replace("--", "–"), ", ", "");
@@ -797,8 +825,7 @@ export class TinyBibFormatter {
       ref += this.conditionalRender(entry.publisher, ". ", "");
     }
 
-    if (entry.doi &&
-      entry.doi.length > 0) {
+    if (entry.doi && entry.doi.length > 0) {
       let doiUrl = entry.doi;
 
       if (!doiUrl.startsWith("http://") && !doiUrl.startsWith("https://")) {
@@ -806,11 +833,219 @@ export class TinyBibFormatter {
       }
       ref += this.conditionalRender(this.urlize(doiUrl, entry.doi), ". ", "");
     } else {
-      ref += ".";
+      if (!ref.trimEnd().endsWith(".")) {
+        ref += ".";
+      }
     }
 
-    return ref
+    return ref;
   }
+
+  // ---------------------------------------------------------------------------
+  // Harvard full reference
+  // ---------------------------------------------------------------------------
+
+  getFullReferenceHarvard(citeKey) {
+    const entry = this.getEntry(citeKey);
+
+    const author = this.getAuthorsInReference(citeKey, "author");
+    // editor string already carries " (ed.)/(eds)" suffix from getAuthorsInReference
+    const editor = this.getAuthorsInReference(citeKey, "editor");
+
+    // Standalone works have their title italicised and are not nested inside a
+    // container (journal, booktitle). Non-standalone works appear inside one.
+    const isStandalone = ["book", "booklet", "manual", "proceedings", "techreport"].includes(entry.type);
+
+    let ref = "";
+
+    // --- Primary contributor (authors, or editors when there are no authors) ---
+    if (author) {
+      ref += author;
+    } else if (editor) {
+      ref += editor;
+    }
+
+    // --- Year: always immediately after contributors ---
+    ref += this.conditionalRender(entry.year, " (", ")");
+
+    // --- Dispatch by entry type ---
+
+    if (entry.type === "incollection") {
+      return this._harvardIncollection(ref, citeKey, entry, editor);
+    }
+
+    if (entry.journal) {
+      return this._harvardArticle(ref, entry);
+    }
+
+    if (isStandalone) {
+      return this._harvardStandalone(ref, entry);
+    }
+
+    // Fallback: misc, unpublished, mastersthesis, phdthesis, etc.
+    return this._harvardMisc(ref, entry);
+  }
+
+  /**
+   * Harvard: journal article
+   * Author, A.B. (year) 'Title of article', Journal Name, volume(issue), pp. X–Y. doi:...
+   */
+  _harvardArticle(ref, entry) {
+    // Article title: single-quoted, plain text, ends with comma (absorbed into journal separator)
+    // Guard: if title already ends with a period, drop it — the quote+comma replaces it.
+    const rawTitle = entry.title?.trimEnd().replace(/\.$/, "") ?? "";
+    ref += this.conditionalRender("'" + rawTitle + "'", " ", "");
+
+    // Journal name: italicised, followed by comma
+    if (ref.trimEnd().endsWith("'")) {
+      // nothing to dedup, just append
+    }
+    ref += this.conditionalRender(this.italicize(entry.journal), ", ", "");
+    ref += this.conditionalRender(entry.volume, ", ", "");
+    ref += this.conditionalRender(entry.number, "(", ")");
+    ref += this.conditionalRender(entry.pages?.replace("--", "–"), ", pp. ", "");
+
+    const doi = this._harvardDoiUrl(entry);
+    ref += doi;
+
+    if (!ref.trimEnd().endsWith(".")) ref += ".";
+    return ref;
+  }
+
+  /**
+   * Harvard: standalone work (book, booklet, manual, proceedings, techreport)
+   * Author, A.B. (year) Title of Book, Nth edn. Place: Publisher. doi:...
+   */
+  _harvardStandalone(ref, entry) {
+    // Italicised title
+    ref += this.conditionalRender(this.italicize(entry.title), " ", "");
+    // Edition
+    ref += this._harvardEdition(entry);
+    // Ensure period after title+edition block before publisher
+    if (!ref.trimEnd().endsWith(".")) ref += ".";
+
+    ref += this._harvardPublisher(entry);
+    ref += this._harvardDoiUrl(entry);
+
+    if (!ref.trimEnd().endsWith(".")) ref += ".";
+    return ref;
+  }
+
+  /**
+   * Harvard: chapter in an edited book
+   * Author, A.B. (year) 'Chapter title', in: Editor, E. (ed.) Book Title. Place: Publisher, pp. X–Y. doi:...
+   */
+  _harvardIncollection(ref, citeKey, entry, editor) {
+    // Chapter title: single-quoted plain text
+    const rawTitle = entry.title?.trimEnd().replace(/\.$/, "") ?? "";
+    ref += this.conditionalRender("'" + rawTitle + "'", " ", "");
+
+    // "in:" block with editor and book title
+    if (ref.trimEnd().endsWith("'")) {
+      // no trailing period to strip
+    }
+    if (editor) {
+      ref += ", in: " + editor + " " + this.italicize(entry.booktitle);
+    } else {
+      ref += ", in: " + this.italicize(entry.booktitle);
+    }
+
+    // Publisher block before pages in incollection
+    ref += this._harvardPublisher(entry);
+
+    // Pages — come after publisher in Harvard chapter format
+    ref += this.conditionalRender(entry.pages?.replace("--", "–"), ", pp. ", "");
+
+    ref += this._harvardDoiUrl(entry);
+
+    if (!ref.trimEnd().endsWith(".")) ref += ".";
+    return ref;
+  }
+
+  /**
+   * Harvard: misc / unpublished / thesis fallback
+   * Author, A.B. (year) Title. doi:... or Available at: url
+   */
+  _harvardMisc(ref, entry) {
+    const rawTitle = entry.title ?? "";
+    const titleSuffix = rawTitle.trimEnd().endsWith(".") ? "" : ".";
+    ref += this.conditionalRender(rawTitle, " ", titleSuffix);
+
+    ref += this._harvardDoiUrl(entry);
+
+    if (!ref.trimEnd().endsWith(".")) ref += ".";
+    return ref;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Harvard helper: edition string
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns a Harvard-formatted edition string, e.g. " 2nd edn." or "".
+   * Used only for standalone (book-like) entries.
+   */
+  _harvardEdition(entry) {
+    if (!entry.edition) return "";
+    const ed = parseInt(entry.edition, 10);
+    if (isNaN(ed)) {
+      // Non-numeric edition string — use verbatim
+      return " " + entry.edition + " edn.";
+    }
+    const ordinal = ed === 1 ? "st" : ed === 2 ? "nd" : ed === 3 ? "rd" : "th";
+    return " " + ed + ordinal + " edn.";
+  }
+
+  // ---------------------------------------------------------------------------
+  // Harvard helper: publisher block
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns " Place: Publisher." when place is available, or " Publisher."
+   * without place. Returns "" when there is no publisher.
+   */
+  _harvardPublisher(entry) {
+    const publisher = entry.publisher;
+    if (!publisher) return "";
+    const place = entry.address ?? entry.location ?? null;
+    if (place) {
+      return " " + place + ": " + publisher + ".";
+    }
+    return " " + publisher + ".";
+  }
+
+  // ---------------------------------------------------------------------------
+  // Harvard helper: DOI / URL
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns a Harvard-formatted DOI or URL fragment, prefixed with a space.
+   *
+   * Harvard convention uses the short "doi:10.xxxx" form rather than the full
+   * resolver URL. If the stored value is already a non-doi.org URL it is
+   * preserved as-is. Returns "" when neither doi nor url is present.
+   */
+  _harvardDoiUrl(entry) {
+    if (entry.doi && entry.doi.length > 0) {
+      let doiRaw = entry.doi;
+      // Normalise: strip the https://doi.org/ resolver prefix if present
+      doiRaw = doiRaw.replace(/^https?:\/\/doi\.org\//i, "");
+      // If what remains is still a full URL (non-doi.org), keep as-is
+      if (doiRaw.startsWith("http://") || doiRaw.startsWith("https://")) {
+        return " " + this.urlize(doiRaw, doiRaw);
+      }
+      const doiUrl = "https://doi.org/" + doiRaw;
+      return " " + this.urlize(doiUrl, "doi:" + doiRaw);
+    }
+    if (entry.url && entry.url.length > 0) {
+      return " Available at: " + this.urlize(entry.url, entry.url);
+    }
+    return "";
+  }
+
+  // ---------------------------------------------------------------------------
+  // Shared utility
+  // ---------------------------------------------------------------------------
 
   conditionalRender(text, prefix, suffix) {
     if (text === undefined || text === null) {
