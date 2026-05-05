@@ -5,6 +5,31 @@ export class TinyBibReader {
     //remove comments as BibtexParser seems to have troubles with them
     bibtex = bibtex.replace(/[\s]*%.*/gm, "");
 
+    // Extract @string macro definitions and substitute their references throughout.
+    // Handles simple @string{key = {value}} and @string{key = "value"} forms.
+    // Also handles concatenation with #, e.g. `publisher = dtv # { and others}`.
+    const stringMacros = {};
+    bibtex = bibtex.replace(
+      /@string\{([^\s=]+)\s*=\s*(?:\{([^}]*)\}|"([^"]*)")\s*\}/gi,
+      (match, key, braceVal, quoteVal) => {
+        stringMacros[key.toLowerCase()] = braceVal ?? quoteVal;
+        return "";
+      }
+    );
+    if (Object.keys(stringMacros).length > 0) {
+      const macroPattern = new RegExp(
+        "(?<=[=\\#][^\\S\\r\\n]*)(" +
+        Object.keys(stringMacros).map(k => k.replace(/[-]/g, "\\$&")).join("|") +
+        ")(?=[^\\S\\r\\n]*(?:[\\#,}\\r\\n]))",
+        "gi"
+      );
+      bibtex = bibtex.replace(macroPattern, (match) => {
+        return "{" + stringMacros[match.toLowerCase()] + "}";
+      });
+      // collapse # concatenation: {val1} # {val2} -> {val1val2} (values handle their own spacing)
+      bibtex = bibtex.replace(/\}\s*#\s*\{/g, "");
+    }
+
     const months = {
       jan: "January",
       feb: "February",
@@ -33,6 +58,77 @@ export class TinyBibReader {
 
     //hotfix for year = 1234 without quotes
     bibtex = bibtex.replace(/year[^\S\r\n]*=[^\S\r\n]*([0-9]+)/gm, 'year="$1"');
+
+    //hotfix for BibLaTeX date = 2002 or date = {2002} or date = {2002-01-15} -> year = "2002"
+    bibtex = bibtex.replace(
+      /date[^\S\r\n]*=[^\S\r\n]*\{?([0-9]{4})[^,}\n]*\}?/gm,
+      'year="$1"'
+    );
+
+    //hotfix for BibLaTeX journaltitle -> journal (BibtexParser only knows "journal")
+    bibtex = bibtex.replace(/journaltitle[^\S\r\n]*=/gim, "journal =");
+
+    // BibtexParser crashes on bare unquoted macro values — e.g. `langid = german` or
+    // `language = english`. It only accepts STRING_LITERAL ({...} / "...") or INTEGER_LITERAL.
+    // Rather than maintaining a blacklist of field names (which grows with every new BibLaTeX
+    // field), we fix the root cause: quote any bare-word value on its own line so the parser
+    // never sees an unsupported value type, regardless of the field name.
+    // This runs BEFORE flattening while each field is still on its own line.
+    bibtex = bibtex.replace(
+      /^([^\S\r\n]*[a-zA-Z]+[^\S\r\n]*=[^\S\r\n]*)([a-zA-Z][a-zA-Z0-9_-]*)([^\S\r\n]*,?[^\S\r\n]*)$/gm,
+      (match, prefix, bareWord, suffix) => `${prefix}"${bareWord}"${suffix}`
+    );
+
+    // Some fields (e.g. BibLaTeX's `annotation`) carry rich multi-line LaTeX content with
+    // nested \texttt{...} commands that confuse BibtexParser even when brace-quoted.
+    // Strip these fields entirely BEFORE flattening, using a brace-depth scanner so that
+    // multi-line values with nested braces are removed completely.
+    // Note: this list only needs fields whose *content* breaks the parser — unknown fields
+    // with plain string values are handled fine by BibtexParser and don't need stripping.
+    const fieldsWithProblematicContent = [
+      "annotation",
+      "abstract",
+      "note",
+    ];
+    bibtex = stripFieldsWithBalancedBraces(bibtex, fieldsWithProblematicContent);
+
+    function stripFieldsWithBalancedBraces(src, fields) {
+      const fieldPattern = new RegExp(
+        "^[^\\S\\r\\n]*(?:" + fields.join("|") + ")[^\\S\\r\\n]*=[^\\S\\r\\n]*",
+        "im"
+      );
+      let result = src;
+      let safety = 0;
+      while (safety++ < 500) {
+        const match = fieldPattern.exec(result);
+        if (!match) break;
+        const start = match.index;
+        let pos = start + match[0].length;
+        if (result[pos] === '{') {
+          let depth = 1;
+          pos++;
+          while (pos < result.length && depth > 0) {
+            if (result[pos] === '{') depth++;
+            else if (result[pos] === '}') depth--;
+            pos++;
+          }
+        } else if (result[pos] === '"') {
+          pos++;
+          while (pos < result.length && result[pos] !== '"') {
+            if (result[pos] === '\\') pos++;
+            pos++;
+          }
+          pos++;
+        } else {
+          while (pos < result.length && result[pos] !== ',' && result[pos] !== '\n' && result[pos] !== '}') {
+            pos++;
+          }
+        }
+        if (result[pos] === ',') pos++;
+        result = result.slice(0, start) + result.slice(pos);
+      }
+      return result;
+    }
 
     //flatten the references
     bibtex = bibtex.replace(/[\r\n][\s]*([^@])/gm, " $1");

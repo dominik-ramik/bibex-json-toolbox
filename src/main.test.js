@@ -2529,7 +2529,7 @@ test('APA markdown single', () => {
   const citeKey = reader.citeKeys[0]
 
   let result = renderApa.getFullReference(citeKey)
-  
+
   expect(result).toBe("Lavery, T. H., & Flannery, T. F. (2023). *Mammals of the South-west Pacific*. CSIRO Publishing.")
   //expect(renderHarvard.getAuthorsInReference(citeKey)).toBe(item.harvard)
 }
@@ -2905,7 +2905,7 @@ let extendedBibTeXExamples = `
   indextitle   = {Palladium pincer complexes},
 }
 
-@book{aristotle:anima,
+@book{aristotle-anima,
   author       = {Aristotle},
   title        = {De Anima},
   date         = 1907,
@@ -3457,7 +3457,7 @@ let extendedBibTeXExamples = `
                   first in the bibliography},
 }
 
-@book{nietzsche:ksa1,
+@book{nietzsche-ksa1,
   author       = {Nietzsche, Friedrich},
   title        = {Die Geburt der Trag{\"o}die. Unzeitgem{\"a}{\ss}e
                   Betrachtungen I--IV. Nachgelassene Schriften 1870--1973},
@@ -4203,7 +4203,6 @@ test('extendedBibTeXExamples read-in fails for non-standard entry types and cite
   expect(() => new TinyBibReader(extendedBibTeXExamples)).toThrow(/Issues with citekeys/)
 })
 
-/*
 test('extendedBibTeXExamples supported entries can be read-in and compiled', () => {
   const allowedEntryTypes = [
     'article', 'book', 'booklet', 'conference', 'inbook', 'incollection',
@@ -4211,31 +4210,110 @@ test('extendedBibTeXExamples supported entries can be read-in and compiled', () 
     'proceedings', 'techreport', 'unpublished'
   ]
 
-  // Extract @string macro definitions for substitution
-  const macros = {}
-  for (const m of extendedBibTeXExamples.matchAll(/@string\{(\S+)\s*=\s*\{([^}]+)\}/g)) {
-    macros[m[1]] = m[2]
-  }
-
-  // Split on entry boundaries, keep only supported types with valid citekeys
+  // Split on entry boundaries, keep only supported types with valid citekeys.
+  // @string definitions and unsupported types (mvbook, set, online, etc.) are excluded.
+  // TinyBibReader now handles @string expansion internally, so no pre-processing needed.
   const entries = ('\n' + extendedBibTeXExamples)
     .split(/\n(?=@)/)
     .filter(entry => {
       const m = entry.match(/^@([a-zA-Z]+)\{([a-zA-Z0-9-]+),/)
       return m && allowedEntryTypes.includes(m[1].toLowerCase())
     })
-    .map(entry => {
-      // Substitute unquoted @string macro references with their literal values
-      let result = entry
-      for (const [key, val] of Object.entries(macros)) {
-        result = result.replace(new RegExp(`(=\\s*)${key}(\\s*,)`, 'g'), `$1{${val}}$2`)
-      }
-      return result
-    })
 
   expect(entries.length).toBeGreaterThan(0)
-  const reader = new TinyBibReader(entries.join('\n'))
-  expect(reader.citeKeys.length).toEqual(entries.length)
+
+  // Prepend the @string block so TinyBibReader can expand macros like cup, jams, anch-ie
+  const strings = ('\n' + extendedBibTeXExamples)
+    .split(/\n(?=@)/)
+    .filter(chunk => chunk.match(/^@string/i))
+    .join('\n')
+
+  const reader = new TinyBibReader(strings + '\n' + entries.join('\n'))
+
+  // @string macros must be expanded, not loaded as entries
+  expect(reader.citeKeys).not.toContain('cup')
+  expect(reader.citeKeys).not.toContain('jams')
+  expect(reader.citeKeys).not.toContain('anch-ie')
+
+  // cup -> Cambridge University Press (simple macro reference)
+  expect(reader.bibliography['aristotle-anima']?.publisher)
+    .toBe('Cambridge University Press')
+
+  // jams -> J.~Amer. Math. Soc. (macro used as journaltitle, remapped to journal)
+  expect(reader.bibliography['bertram']?.journal)
+    .toBe('J.~Amer. Math. Soc.')
+
+  // anch-ie -> Angew.~Chem. Int.~Ed. (hyphenated macro key)
+  expect(reader.bibliography['herrmann']?.journal)
+    .toBe('Angew.~Chem. Int.~Ed.')
+
+  // Smoke-test that rendering doesn't crash and includes the expanded value
   const formatter = new TinyBibFormatter(reader.bibliography, { style: 'apa', format: 'text' })
-  expect(formatter).toBeDefined()
-})*/
+  expect(formatter.getFullReference('aristotle-anima')).toContain('Cambridge University Press')
+  expect(formatter.getFullReference('bertram')).toContain('J.~Amer. Math. Soc.')
+})
+
+test('@string macros are expanded: simple reference, hyphenated key, and # concatenation', () => {
+  // Drawn from extendedBibTeXExamples. Uses three distinct macro patterns:
+  //   cup          — simple bare reference (publisher = cup)
+  //   anch-ie      — hyphenated key       (journaltitle = anch-ie)
+  //   dtv # {…}   — # concatenation      (publisher = dtv # { and Walter de Gruyter})
+  const bib = `
+@string{anch-ie = {Angew.~Chem. Int.~Ed.}}
+@string{cup     = {Cambridge University Press}}
+@string{dtv     = {Deutscher Taschenbuch-Verlag}}
+
+@book{aristotle-anima,
+  author       = {Aristotle},
+  title        = {De Anima},
+  date         = 1907,
+  editor       = {Hicks, Robert Drew},
+  publisher    = cup,
+  location     = {Cambridge},
+}
+
+@article{herrmann,
+  author       = {Herrmann, Wolfgang A.},
+  title        = {A carbocyclic carbene as an efficient catalyst ligand for C--C coupling reactions},
+  journaltitle = anch-ie,
+  date         = 2006,
+  volume       = 45,
+  number       = 23,
+  pages        = {3859-3862},
+}
+
+@book{nietzsche-ksa1,
+  author       = {Nietzsche, Friedrich},
+  title        = {Die Geburt der Tragodie},
+  date         = 1988,
+  editor       = {Colli, Giorgio and Montinari, Mazzino},
+  publisher    = dtv # { and Walter de Gruyter},
+}
+`
+  const reader = new TinyBibReader(bib)
+
+  // all three entries loaded
+  expect(reader.citeKeys).toEqual(['aristotle-anima', 'herrmann', 'nietzsche-ksa1'])
+
+  // simple macro: cup -> Cambridge University Press
+  expect(reader.bibliography['aristotle-anima'].publisher)
+    .toBe('Cambridge University Press')
+
+  // hyphenated macro key: anch-ie -> Angew.~Chem. Int.~Ed.
+  expect(reader.bibliography['herrmann'].journal)
+    .toBe('Angew.~Chem. Int.~Ed.')
+
+  // # concatenation: dtv + literal suffix
+  expect(reader.bibliography['nietzsche-ksa1'].publisher)
+    .toBe('Deutscher Taschenbuch-Verlag and Walter de Gruyter')
+
+  // @string definitions themselves must not appear as entries
+  expect(reader.citeKeys).not.toContain('cup')
+  expect(reader.citeKeys).not.toContain('anch-ie')
+  expect(reader.citeKeys).not.toContain('dtv')
+
+  // rendering should not crash and should include the expanded publisher
+  const formatter = new TinyBibFormatter(reader.bibliography, { style: 'apa', format: 'text' })
+  const ref = formatter.getFullReference('aristotle-anima')
+  expect(ref).toContain('Cambridge University Press')
+})
